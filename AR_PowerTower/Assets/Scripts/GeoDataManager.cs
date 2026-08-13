@@ -5,42 +5,43 @@ using Newtonsoft.Json.Linq;
 
 public class GeoDataManager : MonoBehaviour
 {
-    // Resources フォルダ内のファイル名（※ .json 拡張子は省いた名前を指定）
-    [SerializeField] private string resourceFileName = "kanto_points";
+    [SerializeField] private string towerResourceFileName = "power_tower_kanto";
 
-    public class LocationPoint
+    public class TowerPoint
     {
-        public string Name;
+        public string Id;
+        public string TowerName; // est_tower_name
+        public string TowerNum;  // est_tower_num
         public double Latitude;
         public double Longitude;
     }
 
-    public List<LocationPoint> LoadedPoints { get; private set; } = new List<LocationPoint>();
+    public List<TowerPoint> LoadedTowers { get; private set; } = new List<TowerPoint>();
 
     void Start()
     {
-        LoadGeoJson();
+        LoadTowerGeoJson();
     }
 
-    void LoadGeoJson()
+    public void LoadTowerGeoJson()
     {
-        // Unityの Resources フォルダからテキストアセットとしてロード（PC / Android 共通対応）
-        TextAsset geoJsonAsset = Resources.Load<TextAsset>(resourceFileName);
+        LoadedTowers.Clear();
+        TextAsset geoJsonAsset = Resources.Load<TextAsset>(towerResourceFileName);
 
         if (geoJsonAsset == null)
         {
-            Debug.LogError($"【エラー】Resources フォルダ内に '{resourceFileName}.json' が見つかりません。");
+            Debug.LogError($"【エラー】Resources フォルダ内に '{towerResourceFileName}.json' が見つかりません。");
             return;
         }
 
         try
         {
-            string jsonText = geoJsonAsset.text;
-            JObject geoJson = JObject.Parse(jsonText);
+            JObject geoJson = JObject.Parse(geoJsonAsset.text);
             JArray features = geoJson["features"] as JArray;
 
             if (features != null)
             {
+                int index = 0;
                 foreach (var feature in features)
                 {
                     string geomType = feature["geometry"]?["type"]?.ToString();
@@ -51,11 +52,16 @@ public class GeoDataManager : MonoBehaviour
                         {
                             double lng = (double)coordinates[0];
                             double lat = (double)coordinates[1];
-                            string name = feature["properties"]?["name"]?.ToString() ?? "名称未設定";
 
-                            LoadedPoints.Add(new LocationPoint
+                            var props = feature["properties"];
+                            string towerName = props?["est_tower_name"]?.ToString() ?? "名称未設定";
+                            string towerNum = props?["est_tower_num"]?.ToString() ?? "-";
+
+                            LoadedTowers.Add(new TowerPoint
                             {
-                                Name = name,
+                                Id = $"Tower_{index++}",
+                                TowerName = towerName,
+                                TowerNum = towerNum,
                                 Latitude = lat,
                                 Longitude = lng
                             });
@@ -64,7 +70,7 @@ public class GeoDataManager : MonoBehaviour
                 }
             }
 
-            Debug.Log($"<color=green>【GeoJSON成功】 {LoadedPoints.Count} 件のPointデータを正常に読み込みました！</color>");
+            Debug.Log($"<color=green>【鉄塔GeoJSON】{LoadedTowers.Count} 件の鉄塔データを正常ロード</color>");
         }
         catch (Exception e)
         {
